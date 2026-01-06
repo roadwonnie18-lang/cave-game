@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Mysterious Cave</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #0f0;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        #output {
+            height: 70vh;
+            overflow-y: auto;
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #001100;
+            white-space: pre-wrap;
+        }
+        #input-area {
+            display: flex;
+        }
+        #input {
+            flex-grow: 1;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background-color: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+        }
+        button {
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background-color: #003300;
+            color: #0f0;
+            border: 1px solid #0f0;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #006600;
+        }
+        .choice {
+            color: #ff0;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .choice:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>=== THE MYSTERIOUS CAVE ===</h1>
+    <div id="output"></div>
+    <div id="input-area">
+        <input type="text" id="input" placeholder="Type a number or answer here..." autofocus>
+        <button onclick="processInput()">Submit</button>
+    </div>
+    <script>
+        const output = document.getElementById('output');
+        const inputBox = document.getElementById('input');
+        let player = {
+            has_sword: false,
+            has_magic: false,
+            has_amulet: false,
+            dragon_balls: 0,
+            has_summoned_shenron: false
+        };
+        let currentChoices = [];
+        let awaitingTextInput = false;
+        let isTyping = false;
+
+        async function typeLine(text = '', delay = 30) {
+            if (text === '') {
+                output.innerHTML += '<br>';
+                output.scrollTop = output.scrollHeight;
+                return;
+            }
+            isTyping = true;
+            inputBox.disabled = true;
+
+            const div = document.createElement('div');
+            output.appendChild(div);
+
+            for (let char of text) {
+                div.innerHTML += char === ' ' ? '&nbsp;' : char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                output.scrollTop = output.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+            output.innerHTML += '<br>';
+            output.scrollTop = output.scrollHeight;
+
+            isTyping = false;
+            inputBox.disabled = false;
+            inputBox.focus();
+        }
+
+        async function showChoices(choices, callback) {
+            currentChoices = choices.map(ch => ({text: ch.text, value: ch.value, callback}));
+
+            await typeLine(''); // blank line before choices
+
+            for (let i = 0; i < choices.length; i++) {
+                const choiceText = `${i + 1}. ${choices[i].text}`;
+
+                // Type out the choice as normal text
+                await typeLine(choiceText, 20);
+
+                // Add invisible clickable overlay (same text, but transparent and positioned absolutely)
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+                wrapper.style.marginTop = '-1.6em'; // pull it up to overlap the typed line
+                wrapper.style.height = '1.6em';
+
+                const span = document.createElement('span');
+                span.className = 'choice';
+                span.innerText = choiceText;
+                span.style.opacity = '0'; // make it invisible
+                span.onclick = () => handleChoice(i + 1);
+
+                wrapper.appendChild(span);
+                output.appendChild(wrapper);
+                output.innerHTML += '<br>'; // extra space to separate choices
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+
+        function handleChoice(num) {
+            if (isTyping) return;
+            const choice = currentChoices[num - 1];
+            if (choice) {
+                inputBox.value = '';
+                choice.callback(choice.value);
+            }
+        }
+
+        async function processInput() {
+            if (isTyping) return;
+            const val = inputBox.value.trim().toLowerCase();
+            inputBox.value = '';
+            if (awaitingTextInput) {
+                awaitingTextInput = false;
+                if (currentRoom === 'puzzle') {
+                    if (val === 'echo' || val === 'an echo' || val === '2') {
+                        await puzzleSuccess();
+                    } else {
+                        await typeLine('<br>Wrong answer. The runes flicker mockingly.');
+                        await puzzleRoom();
+                    }
+                } else if (currentRoom === 'playAgain') {
+                    if (val === 'yes' || val === 'y') {
+                        await startGame();
+                    } else {
+                        await typeLine('<br>Thanks for playing! Goodbye, adventurer!');
+                    }
+                }
+                return;
+            }
+            const num = parseInt(val);
+            if (!isNaN(num) && num >= 1 && num <= currentChoices.length) {
+                handleChoice(num);
+            }
+        }
+
+        inputBox.addEventListener('keypress', e => {
+            if (e.key === 'Enter') processInput();
+        });
+
+        let currentRoom = '';
+
+        async function startGame() {
+            output.innerHTML = '';
+            player = {
+                has_sword: false,
+                has_magic: false,
+                has_amulet: false,
+                dragon_balls: 0,
+                has_summoned_shenron: false
+            };
+            await typeLine('You wake up at the entrance of a dark cave.');
+            await typeLine('You have no memory of how you got here.');
+            await typeLine('A cold wind blows from within...');
+            await entrance();
+        }
+
+        async function entrance() {
+            currentRoom = 'entrance';
+            await typeLine('<br>You stand at the cave entrance. What do you want to do?');
+            await showChoices([
+                {text: 'Enter the cave', value: 'enter'},
+                {text: 'Walk away', value: 'away'}
+            ], async (val) => {
+                if (val === 'enter') await darkTunnel();
+                else {
+                    await typeLine('<br>You walk away...');
+                    await typeLine("'Coward...' whispers a voice.");
+                    await typeLine('<br>GAME OVER');
+                    await playAgain();
+                }
+            });
+        }
+
+        async function darkTunnel() {
+            currentRoom = 'tunnel';
+            await typeLine('<br>You enter the dark tunnel. Passages lead in several directions.');
+            await showChoices([
+                {text: 'Go left (golden light)', value: 'left'},
+                {text: 'Go right (blue glow)', value: 'right'},
+                {text: 'Go forward (stone carvings)', value: 'forward'},
+                {text: 'Search the walls', value: 'search'},
+                {text: 'Go back', value: 'back'}
+            ], async (val) => {
+                if (val === 'left') await treasureRoom();
+                else if (val === 'right') await magicChamber();
+                else if (val === 'forward') await puzzleRoom();
+                else if (val === 'search') await hiddenPassage();
+                else await entrance();
+            });
+        }
+
+        async function treasureRoom() {
+            currentRoom = 'treasure';
+            await typeLine('<br>You find a room filled with gold! A glowing chest sits in the center.');
+            await showChoices([
+                {text: 'Open the chest', value: 'open'},
+                {text: 'Take some gold and leave', value: 'take'},
+                {text: 'Leave everything and go back', value: 'back'}
+            ], async (val) => {
+                if (val === 'open') {
+                    await typeLine('<br>You find a magical sword!');
+                    player.has_sword = true;
+                    await typeLine('A roar echoes from deeper in the cave...');
+                    await showChoices([
+                        {text: 'Investigate the roar', value: 'investigate'},
+                        {text: 'Leave with the sword', value: 'leave'}
+                    ], async (c) => {
+                        if (c === 'investigate') await dragonChamber();
+                        else {
+                            await typeLine('<br>You escape as a legendary adventurer!');
+                            await typeLine('*** YOU WIN! ***');
+                            await playAgain();
+                        }
+                    });
+                } else if (val === 'take') {
+                    await typeLine('<br>The ceiling collapses! You barely escape with some gold.');
+                    await typeLine('** SURVIVED! **');
+                    await playAgain();
+                } else await darkTunnel();
+            });
+        }
+
+        async function magicChamber() {
+            currentRoom = 'magic';
+            await typeLine('<br>Blue flames light a chamber. An ancient spellbook rests on a pedestal.');
+            await showChoices([
+                {text: 'Read the spellbook', value: 'read'},
+                {text: 'Try to take the book', value: 'take'},
+                {text: 'Continue deeper', value: 'deeper'},
+                {text: 'Go back', value: 'back'}
+            ], async (val) => {
+                if (val === 'read') {
+                    await typeLine('<br>You learn LEVIOSA - the power of levitation!');
+                    player.has_magic = true;
+                    await showChoices([
+                        {text: 'Continue deeper', value: 'deeper'},
+                        {text: 'Go back', value: 'back'}
+                    ], async (c) => c === 'deeper' ? await dragonChamber() : await darkTunnel());
+                } else if (val === 'take') {
+                    await typeLine('<br>The book is sealed. You must read it here.');
+                    await magicChamber();
+                } else if (val === 'deeper') await dragonChamber();
+                else await darkTunnel();
+            });
+        }
+
+        async function puzzleRoom() {
+            currentRoom = 'puzzle';
+            if (player.has_amulet) {
+                await typeLine('<br>The door is already open. Reward claimed.');
+                await darkTunnel();
+                return;
+            }
+            await typeLine('<br>A stone door bears a riddle:');
+            await typeLine('"I speak without a mouth and hear without ears.');
+            await typeLine('I have no body, but I come alive with the wind.');
+            await typeLine('What am I?"');
+            await typeLine('<br>Type your answer (or type the number of a choice):');
+            await showChoices([
+                {text: 'A shadow', value: 'shadow'},
+                {text: 'An echo', value: 'echo'},
+                {text: 'The wind', value: 'wind'},
+                {text: 'A ghost', value: 'ghost'}
+            ], async (val) => {
+                if (val === 'echo') await puzzleSuccess();
+                else {
+                    await typeLine('<br>Wrong! Try again.');
+                    await puzzleRoom();
+                }
+            });
+            awaitingTextInput = true;
+        }
+
+        async function puzzleSuccess() {
+            await typeLine('<br>CORRECT! The door opens.');
+            await typeLine('You find the AMULET OF PROTECTION.');
+            player.has_amulet = true;
+            await showChoices([
+                {text: 'Continue deeper', value: 'deeper'},
+                {text: 'Return to tunnel', value: 'back'}
+            ], async (val) => val === 'deeper' ? await dragonChamber() : await darkTunnel());
+        }
+
+        async function hiddenPassage() {
+            await typeLine('<br>You find a hidden switch! A secret door opens...');
+            await dragonBallChamber();
+        }
+
+        async function dragonBallChamber() {
+            await typeLine('<br>A sacred chamber holds SEVEN DRAGON BALLS!');
+            if (player.dragon_balls === 0) {
+                player.dragon_balls = 7;
+                await typeLine('You collect all seven!');
+            }
+            await showChoices([
+                {text: 'Summon Shenron', value: 'summon'},
+                {text: 'Keep them and explore', value: 'keep'},
+                {text: 'Leave them', value: 'leave'}
+            ], async (val) => {
+                if (val === 'summon') await summonShenron();
+                else await darkTunnel();
+            });
+        }
+
+        async function summonShenron() {
+            if (player.has_summoned_shenron) {
+                await typeLine('<br>The balls are lifeless now.');
+                await darkTunnel();
+                return;
+            }
+            player.has_summoned_shenron = true;
+            await typeLine('<br>SHENRON RISES! "I GRANT YOU THREE WISHES!"');
+            await typeLine('Your wishes come true beyond imagination...');
+            await typeLine('<br>*** COSMIC VICTORY! Ultimate Wishmaster! ***');
+            await playAgain();
+        }
+
+        async function dragonChamber() {
+            currentRoom = 'dragon';
+            await typeLine('<br>A massive dragon sleeps atop mountains of treasure!');
+            const options = [
+                {text: 'Sneak and grab treasure', value: 'sneak'},
+                {text: player.has_sword ? 'Attack with sword' : 'Confront the dragon', value: 'attack'},
+            ];
+            if (player.has_magic) options.push({text: 'Use Leviosa', value: 'leviosa'});
+            if (player.has_amulet) options.push({text: 'Approach peacefully (amulet)', value: 'peace'});
+            if (player.dragon_balls === 7 && !player.has_summoned_shenron) options.push({text: 'Summon Shenron', value: 'shenron'});
+            options.push({text: 'Quietly leave', value: 'leave'});
+
+            await showChoices(options, async (val) => {
+                if (val === 'sneak') {
+                    await typeLine('<br>You step on a bone... the dragon wakes!');
+                    if (player.has_sword) await winEnding('Dragon Slayer');
+                    else await loseEnding();
+                } else if (val === 'attack') {
+                    if (player.has_sword) await winEnding('Dragon Slayer');
+                    else await loseEnding();
+                } else if (val === 'leviosa') {
+                    await typeLine('<br>You levitate the treasure and escape!');
+                    await typeLine('*** LEGENDARY WIN! Master Wizard! ***');
+                    await playAgain();
+                } else if (val === 'peace') {
+                    await typeLine('<br>The dragon bows. "You are wise." You become allies.');
+                    await typeLine('*** ENLIGHTENED VICTORY! Guardian of Wisdom! ***');
+                    await playAgain();
+                } else if (val === 'shenron') {
+                    await summonShenron();
+                } else await darkTunnel();
+            });
+        }
+
+        async function winEnding(title) {
+            await typeLine('<br>You defeat the dragon and claim the hoard!');
+            await typeLine(`*** YOU WIN! ${title}! ***`);
+            await playAgain();
+        }
+
+        async function loseEnding() {
+            await typeLine('<br>The dragon breathes fire...');
+            await typeLine('*** GAME OVER ***');
+            await playAgain();
+        }
+
+        async function playAgain() {
+            currentRoom = 'playAgain';
+            await typeLine('<br>Would you like to play again? (yes/no)');
+            awaitingTextInput = true;
+        }
+
+        // Start the game
+        startGame();
+    </script>
+</body>
+</html>
