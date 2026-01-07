@@ -70,7 +70,8 @@
             has_magic: false,
             has_amulet: false,
             dragon_balls: 0,
-            has_summoned_shenron: false
+            has_summoned_shenron: false,
+            wishes_granted: 0
         };
         let currentChoices = [];
         let awaitingTextInput = false;
@@ -181,7 +182,8 @@
                 has_magic: false,
                 has_amulet: false,
                 dragon_balls: 0,
-                has_summoned_shenron: false
+                has_summoned_shenron: false,
+                wishes_granted: 0
             };
             await typeLine('You wake up at the entrance of a dark cave.');
             await typeLine('You have no memory of how you got here.');
@@ -344,10 +346,59 @@
                 return;
             }
             player.has_summoned_shenron = true;
-            await typeLine('<br>SHENRON RISES! "I GRANT YOU THREE WISHES!"');
-            await typeLine('Your wishes come true beyond imagination...');
-            await typeLine('<br>*** COSMIC VICTORY! Ultimate Wishmaster! ***');
-            await playAgain();
+            player.wishes_granted = 0;
+            await typeLine('<br>The Dragon Balls glow intensely!');
+            await typeLine('SHENRON EMERGES IN A BLAZE OF LIGHT!');
+            await typeLine('"SPEAK YOUR WISHES, MORTAL. I SHALL GRANT THREE."');
+            await makeWish();
+        }
+
+        async function makeWish() {
+            const wishNum = player.wishes_granted + 1;
+            await typeLine(`<br>--- WISH ${wishNum} OF 3 ---`);
+            await typeLine('What do you wish for?');
+            
+            const wishes = [
+                {text: 'Immortality', value: 'immortal'},
+                {text: 'Infinite wealth', value: 'wealth'},
+                {text: 'Ultimate power', value: 'power'},
+                {text: 'Wisdom of the ages', value: 'wisdom'},
+                {text: 'Bring back a loved one', value: 'resurrect'},
+                {text: 'World peace', value: 'peace'}
+            ];
+
+            await showChoices(wishes, async (val) => {
+                player.wishes_granted++;
+                
+                if (val === 'immortal') {
+                    await typeLine('<br>"YOUR WISH IS GRANTED. YOU SHALL LIVE FOREVER."');
+                    await typeLine('You feel an eternal energy coursing through you...');
+                } else if (val === 'wealth') {
+                    await typeLine('<br>"YOUR WISH IS GRANTED. RICHES BEYOND MEASURE."');
+                    await typeLine('Mountains of gold materialize before you!');
+                } else if (val === 'power') {
+                    await typeLine('<br>"YOUR WISH IS GRANTED. POWER UNMATCHED."');
+                    await typeLine('Divine energy flows into your very being!');
+                } else if (val === 'wisdom') {
+                    await typeLine('<br>"YOUR WISH IS GRANTED. KNOWLEDGE OF ALL THINGS."');
+                    await typeLine('The secrets of the universe flood your mind!');
+                } else if (val === 'resurrect') {
+                    await typeLine('<br>"YOUR WISH IS GRANTED. LIFE RETURNS."');
+                    await typeLine('A warm light appears, and you feel a presence...');
+                } else if (val === 'peace') {
+                    await typeLine('<br>"YOUR WISH IS GRANTED. HARMONY SHALL REIGN."');
+                    await typeLine('A wave of serenity washes over the world...');
+                }
+
+                if (player.wishes_granted < 3) {
+                    await makeWish();
+                } else {
+                    await typeLine('<br>"YOUR WISHES ARE FULFILLED. FAREWELL."');
+                    await typeLine('Shenron vanishes. The Dragon Balls scatter across the world...');
+                    await typeLine('<br>*** COSMIC VICTORY! Ultimate Wishmaster! ***');
+                    await playAgain();
+                }
+            });
         }
 
         async function dragonChamber() {
